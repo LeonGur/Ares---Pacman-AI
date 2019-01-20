@@ -82,7 +82,7 @@ for _ in range(initial_games):
             game_memory += [prev_observation_action]
 
         #after the initial amount of games, the program starts to actually play the game, insted of executing random moves
-        if game_nr > 100 or load_model == True:
+        if game_nr > 200 or load_model == True:
             env.render()
             predicted_rewards = 0
             idle_reward = 0
@@ -103,7 +103,7 @@ for _ in range(initial_games):
     for _ in range(0, len(game_memory)):
         training_label.append([total_score])
 
-    if game_nr > 3000:
+    if game_nr > 2500:
         training_data  = []
         training_label = []
         game_nr = 0
@@ -113,7 +113,7 @@ for _ in range(initial_games):
     game_nr += 1
 
     #after the initial games, the nn is retrained every tenth game
-    if game_nr % 10 == 0 and game_nr > 90:
+    if game_nr % 10 == 0 and game_nr > 190:
         model.fit(np.asarray(training_data), np.asarray(training_label), batch_size = 128, epochs = 5, verbose = 2)
         print("Saving weights")
         model.save_weights(weights_filename)
