@@ -13,7 +13,7 @@ initial_games         = 5000
 max_memory_length     = 50000
 load_previous_weights = True
 load_model            = False
-weights_filename      = "Pacman-v4-weights.h5"
+weights_filename      = "Pacman-v12-weights.h5"
 env                   = gym.make('MsPacman-ram-v0')
 
 #Neural Network
@@ -46,8 +46,8 @@ def predict_total_rewards(observation, action):
     return pred[0]
 
 #declaring game variables
-training_data       = []
 training_label      = []
+training_data       = []
 avg_score           = 0
 game_nr             = 1
 
@@ -63,13 +63,13 @@ for _ in range(initial_games):
 
     while done == False:
         #if this is the first action, or the game number is divisible by 7 a random action is exectued
-        if len(prev_observation) == 0 or game_nr%7 == 0:
+        if len(prev_observation) == 0 or game_nr%5 == 0:
             action = env.action_space.sample()
 
         observation, reward, done, info = env.step(action)
         prev_observation = observation
         if reward > 10:
-            total_score += 25
+            total_score += 5
         else:
             total_score += reward
         score       += reward
@@ -82,38 +82,42 @@ for _ in range(initial_games):
             game_memory += [prev_observation_action]
 
         #after the initial amount of games, the program starts to actually play the game, insted of executing random moves
-        if game_nr > 200 or load_model == True:
+        if game_nr > 95 or load_model == True:
             env.render()
             predicted_rewards = 0
             idle_reward = 0
             #the following for loop predicts the expected reward for each of the 8 possible actions and chooses the highes one
-            for x in range(8):
+            for x in range(9):
                 predicted_rewards = predict_total_rewards(prev_observation, x)
                 if predicted_rewards > idle_reward:
                     idle_reward = predicted_rewards
                     action = x
 
-            #if the initial amount of games is not reached, Ares executes random moves
+        #if the initial amount of games is not reached, Ares executes random moves
         else:
             action = env.action_space.sample()
 
 
-    #before being reset the game_memory is added to the training_data. The reward label is equal to the overall score of the game
-    training_data += game_memory
-    for _ in range(0, len(game_memory)):
-        training_label.append([total_score])
+        #before being reset the game_memory is added to the training_data. The reward label is equal to the overall score of the last 75 actions
+        if steps % 75 == 0:
+            training_data += game_memory
+            for _ in range(0, len(game_memory)):
+                training_label.append([total_score])
+            total_score = 0
+    game_memory = []
 
-    if game_nr > 2500:
-        training_data  = []
-        training_label = []
-        game_nr = 0
+    #The first elements of the training list are deleted, once it becomes to long
+    while len(training_label) > 500000:
+        del(training_label[0])
+        del(training_data[0])
+
+    #the NN is retrained after five games
+    if game_nr % 5 == 0 and game_nr > 90:
+        model.fit(np.asarray(training_data), np.asarray(training_label), batch_size = 128, epochs = 7, verbose = 2)
+        print("Saving weights")
+        model.save_weights(weights_filename)
+
 
     #prints the game number, the score and the avarage score
     print(game_nr, " | score:", score, " |  avg score:", str(int(avg_score/(game_nr))))
     game_nr += 1
-
-    #after the initial games, the nn is retrained every tenth game
-    if game_nr % 10 == 0 and game_nr > 190:
-        model.fit(np.asarray(training_data), np.asarray(training_label), batch_size = 128, epochs = 5, verbose = 2)
-        print("Saving weights")
-        model.save_weights(weights_filename)
